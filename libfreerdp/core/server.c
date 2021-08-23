@@ -539,11 +539,12 @@ static rdpMcsChannel* wts_get_joined_channel_by_name(rdpMcs* mcs, const char* ch
 
 	for (index = 0; index < mcs->channelCount; index++)
 	{
-		if (mcs->channels[index].joined)
+		rdpMcsChannel* mchannel = &mcs->channels[index];
+		if (mchannel->joined)
 		{
-			if (_strnicmp(mcs->channels[index].Name, channel_name,
-			              strnlen(channel_name, CHANNEL_NAME_LEN)) == 0)
-				return &mcs->channels[index];
+			if (_strnicmp(mchannel->Name, channel_name, strnlen(channel_name, CHANNEL_NAME_LEN)) ==
+			    0)
+				return mchannel;
 		}
 	}
 
@@ -559,9 +560,10 @@ static rdpMcsChannel* wts_get_joined_channel_by_id(rdpMcs* mcs, const UINT16 cha
 
 	for (index = 0; index < mcs->channelCount; index++)
 	{
-		if (mcs->channels[index].joined)
+		rdpMcsChannel* mchannel = &mcs->channels[index];
+		if (mchannel->joined)
 		{
-			if (mcs->channels[index].ChannelId == channel_id)
+			if (mchannel->ChannelId == channel_id)
 				return &mcs->channels[index];
 		}
 	}
@@ -712,7 +714,10 @@ char** WTSGetAcceptedChannelNames(freerdp_peer* client, size_t* count)
 		return NULL;
 
 	for (index = 0; index < mcs->channelCount; index++)
-		names[index] = mcs->channels[index].Name;
+	{
+		rdpMcsChannel* mchannel = &mcs->channels[index];
+		names[index] = mchannel->Name;
+	}
 
 	return names;
 }
@@ -1098,7 +1103,7 @@ HANDLE WINAPI FreeRDP_WTSVirtualChannelOpen(HANDLE hServer, DWORD SessionId, LPS
 	size_t length;
 	UINT32 index;
 	rdpMcs* mcs;
-	BOOL joined = FALSE;
+	rdpMcsChannel* joined_channel = NULL;
 	freerdp_peer* client;
 	rdpPeerChannel* channel;
 	WTSVirtualChannelManager* vcm;
@@ -1123,31 +1128,31 @@ HANDLE WINAPI FreeRDP_WTSVirtualChannelOpen(HANDLE hServer, DWORD SessionId, LPS
 
 	for (index = 0; index < mcs->channelCount; index++)
 	{
-		if (mcs->channels[index].joined &&
-		    (strncmp(mcs->channels[index].Name, pVirtualName, length) == 0))
+		rdpMcsChannel* mchannel = &mcs->channels[index];
+		if (mchannel->joined && (strncmp(mchannel->Name, pVirtualName, length) == 0))
 		{
-			joined = TRUE;
+			joined_channel = mchannel;
 			break;
 		}
 	}
 
-	if (!joined)
+	if (!joined_channel)
 	{
 		SetLastError(ERROR_NOT_FOUND);
 		return NULL;
 	}
 
-	channel = (rdpPeerChannel*)mcs->channels[index].handle;
+	channel = (rdpPeerChannel*)joined_channel->handle;
 
 	if (!channel)
 	{
-		channel = channel_new(vcm, client, mcs->channels[index].ChannelId, index,
+		channel = channel_new(vcm, client, joined_channel->ChannelId, index,
 		                      RDP_PEER_CHANNEL_TYPE_SVC, client->settings->VirtualChannelChunkSize);
 
 		if (!channel)
 			goto fail;
 
-		mcs->channels[index].handle = channel;
+		joined_channel->handle = channel;
 	}
 
 	hChannelHandle = (HANDLE)channel;
@@ -1188,7 +1193,8 @@ HANDLE WINAPI FreeRDP_WTSVirtualChannelOpenEx(DWORD SessionId, LPSTR pVirtualNam
 
 	for (index = 0; index < mcs->channelCount; index++)
 	{
-		if (mcs->channels[index].joined && (strncmp(mcs->channels[index].Name, "drdynvc", 7) == 0))
+		rdpMcsChannel* mchannel = &mcs->channels[index];
+		if (mchannel->joined && (strncmp(mchannel->Name, "drdynvc", 7) == 0))
 		{
 			joined = TRUE;
 			break;
