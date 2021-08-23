@@ -1248,13 +1248,20 @@ BOOL WINAPI FreeRDP_WTSVirtualChannelClose(HANDLE hChannelHandle)
 {
 	wStream* s;
 	rdpMcs* mcs;
-	WTSVirtualChannelManager* vcm;
+
 	rdpPeerChannel* channel = (rdpPeerChannel*)hChannelHandle;
 	BOOL ret = TRUE;
 
+	WINPR_ASSERT(channel);
+
 	if (channel)
 	{
-		vcm = channel->vcm;
+		WTSVirtualChannelManager* vcm = channel->vcm;
+
+		WINPR_ASSERT(vcm);
+		WINPR_ASSERT(vcm->client);
+		WINPR_ASSERT(vcm->client->context);
+		WINPR_ASSERT(vcm->client->context->rdp);
 		mcs = vcm->client->context->rdp->mcs;
 
 		if (channel->channelType == RDP_PEER_CHANNEL_TYPE_SVC)
@@ -1308,6 +1315,8 @@ BOOL WINAPI FreeRDP_WTSVirtualChannelRead(HANDLE hChannelHandle, ULONG TimeOut, 
 	wMessage message;
 	wtsChannelMessage* messageCtx;
 	rdpPeerChannel* channel = (rdpPeerChannel*)hChannelHandle;
+
+	WINPR_ASSERT(channel);
 
 	if (!MessageQueue_Peek(channel->queue, &message, FALSE))
 	{
@@ -1447,12 +1456,14 @@ BOOL WINAPI FreeRDP_WTSVirtualChannelQuery(HANDLE hChannelHandle, WTS_VIRTUAL_CL
 {
 	void* pfd;
 	BOOL bval;
-	void* fds[10];
+	void* fds[10] = { 0 };
 	HANDLE hEvent;
 	int fds_count = 0;
 	BOOL status = FALSE;
 	rdpPeerChannel* channel = (rdpPeerChannel*)hChannelHandle;
-	ZeroMemory(fds, sizeof(fds));
+
+	WINPR_ASSERT(channel);
+
 	hEvent = MessageQueue_Event(channel->queue);
 
 	switch ((UINT32)WtsVirtualClass)
